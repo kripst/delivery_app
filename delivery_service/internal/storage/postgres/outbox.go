@@ -1,4 +1,4 @@
-package relayer
+package postgres
 
 import (
 	"context"
@@ -10,24 +10,24 @@ import (
 	"go.uber.org/zap"
 )
 
-type outboxService interface {
+type OutboxService interface {
 	updateDelivery(ctx context.Context, orderIDs []string) (error)
 }
 
-type outboxServiceImpl struct {
+type OutboxServiceImpl struct {
 	db *pgxpool.Pool
 	logger *zap.Logger
 }
 
-func NewoutboxServiceImpl(db *pgxpool.Pool, logger *zap.Logger) *outboxServiceImpl {
-	return &outboxServiceImpl{
+func NewoutboxServiceImpl(db *pgxpool.Pool, logger *zap.Logger) *OutboxServiceImpl {
+	return &OutboxServiceImpl{
 		db: db,
 		logger: logger,
 	} 
 	
 }
 
-func (s *outboxServiceImpl) updateDelivery(ctx context.Context, orderIDs []string) (error) {
+func (s *OutboxServiceImpl) updateDelivery(ctx context.Context, orderIDs []string) (error) {
 	batch := &pgx.Batch{}
 
 	for _, orderID := range orderIDs {

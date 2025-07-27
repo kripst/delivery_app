@@ -4,17 +4,18 @@ import (
 	"context"
 	"time"
 
+	"github.com/kripst/delivery_service/internal/storage/postgres"
 	"go.uber.org/zap"
 )
 
 type Relayer struct {
 	deliveryService deliveryService
-	outboxServiceImpl outboxService
+	outboxServiceImpl postgres.OutboxService
 	interval     time.Duration
 	logger       *zap.Logger
 }
 
-func NewRelayer(service deliveryService, interval time.Duration, logger *zap.Logger, outboxServiceImpl outboxService) (*Relayer) {
+func NewRelayer(service deliveryService, interval time.Duration, logger *zap.Logger, outboxServiceImpl postgres.OutboxService) (*Relayer) {
 	return &Relayer{
 		deliveryService: service,
 		interval: interval,
@@ -54,7 +55,7 @@ func (r *Relayer) updateOrdersStatus(ctx context.Context) {
 		return
 	}
 
-	err = r.outboxServiceImpl.updateDelivery(ctx, orderIDs)
+	err = r.outboxServiceImpl.UpdateDelivery(ctx, orderIDs)
 	if err != nil {
 		r.logger.Error("Relayer: Error update ready deliveries",
 			zap.Error(err))
