@@ -1,6 +1,12 @@
 package model
 
 const (
+	Orders_topic = "create_orders"
+	Cancel_topic = "cancel_topic"
+    Pending_topic = "pending_topic"
+)
+
+const (
     // Table names
     DeliveriesTable    = "deliveries"
     DeliveryItemsTable = "delivery_items"

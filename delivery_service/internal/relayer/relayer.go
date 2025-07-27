@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kripst/delivery_service/internal/storage/postgres"
+	"github.com/kripst/delivery_service/model"
 	"go.uber.org/zap"
 )
 
@@ -55,12 +56,13 @@ func (r *Relayer) updateOrdersStatus(ctx context.Context) {
 		return
 	}
 
-	err = r.outboxServiceImpl.UpdateDelivery(ctx, orderIDs)
+	err = r.outboxServiceImpl.UpdateDelivery(ctx, orderIDs, model.DeliveryStatusPending)
 	if err != nil {
 		r.logger.Error("Relayer: Error update ready deliveries",
 			zap.Error(err))
 		return
 	}
 
+	
 
 }

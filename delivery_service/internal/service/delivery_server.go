@@ -25,12 +25,12 @@ func (d *DeliveryServer) HandleNewOrders() {
 	var partition int32 = 0
 
 	for {
-		data, err := d.Consumer.ListenTopic(orders_topic, partition)
+		data, err := d.Consumer.ListenTopic(model.Orders_topic, partition)
 
 		if err != nil {
 			d.Logger.Error("consumer error",
 				zap.Error(err),
-				zap.String("topic", orders_topic),
+				zap.String("topic", model.Orders_topic),
 				zap.Int32("partition", partition))
 				continue
 		}
@@ -40,7 +40,7 @@ func (d *DeliveryServer) HandleNewOrders() {
 			// dead letter queue сделать для ошибок непонятных НАДО ПОМЕНЯТЬ 
 			d.Logger.Error("json Unmarshal error",
 				zap.Error(err),
-				zap.String("topic", orders_topic),
+				zap.String("topic", model.Orders_topic),
 				zap.Int32("partition", partition),
 				zap.Any("data", data))
 			continue
@@ -55,7 +55,7 @@ func (d *DeliveryServer) HandleNewOrders() {
 
 			d.Logger.Error("could not create delivery",
 				zap.Error(err),
-				zap.String("topic", orders_topic),
+				zap.String("topic", model.Orders_topic),
 				zap.Int32("partition", partition),
 				zap.Any("data", data))
 				continue
@@ -64,7 +64,7 @@ func (d *DeliveryServer) HandleNewOrders() {
 		if err := d.Tm.ScheduleOrder(context.Background(), deliveryData.OrderID, deliveryData.DeliveryWindow); err != nil {
 			d.Logger.Error("could not create delivery in tm",
 				zap.Error(err),
-				zap.String("topic", orders_topic),
+				zap.String("topic", model.Orders_topic),
 				zap.Int32("partition", partition),
 				zap.Any("order ID", deliveryData.OrderID),
 				zap.String("delivery window", deliveryData.DeliveryWindow))

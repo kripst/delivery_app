@@ -21,7 +21,7 @@ type OrdersConsumer struct {
 }
 
 
-func NewOrdersConsumer(config *config.KafkaConfig) (*OrdersConsumer, error) {
+func NewOrdersConsumer(config *config.KafkaConsumerConfig) (*OrdersConsumer, error) {
 	consumer , err := sarama.NewConsumer(config.Brokers, config.SaramaConfig)
 	if err != nil {
 		return  nil, err

@@ -9,11 +9,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type KafkaConfig struct {
+type KafkaConsumerConfig struct {
 	SaramaConfig *sarama.Config
 	Brokers      []string
 }
 
+type KafkaProducerConfig struct {
+	SaramaConfig *sarama.Config
+	Brokers      []string
+}
 type RedisConfig struct {
 	Opts *redis.Options
 }
@@ -22,7 +26,8 @@ type config struct {
 	PostgresUrl       string
 	PostgresPgxConfig *pgxpool.Config
 	Dsn               string
-	KafkaConfig       *KafkaConfig
+	KafkaConsumerConfig       *KafkaConsumerConfig
+	KafkaProducerConfig       *KafkaProducerConfig
 	RedisConfig       *RedisConfig
 }
 
@@ -36,11 +41,21 @@ func Load() (config, error) {
 	postgresSslMode := "disable"
 	postgresTimeZone := "Europe/Moscow"
 	kafkaBrokers  := []string{"localhost:9092"}
-	saramaConfig := sarama.NewConfig()
-	saramaConfig.Producer.Return.Errors = true
+	saramaConsumerConfig := sarama.NewConfig()
+	saramaConsumerConfig.Producer.Return.Errors = true
 
-	kafkaConfig := &KafkaConfig{
-		SaramaConfig: saramaConfig,
+	saramaProducerConfig := sarama.NewConfig()
+	saramaProducerConfig.Producer.Return.Successes = true
+	saramaProducerConfig.Producer.Retry.Max = 5
+	saramaProducerConfig.Producer.RequiredAcks = sarama.WaitForAll
+
+	KafkaConsumerConfig := &KafkaConsumerConfig{
+		SaramaConfig: saramaConsumerConfig,
+		Brokers:      kafkaBrokers,
+	}
+
+	KafkaProducerConfig := &KafkaProducerConfig{
+		SaramaConfig: saramaProducerConfig,
 		Brokers:      kafkaBrokers,
 	}
 
@@ -67,7 +82,8 @@ func Load() (config, error) {
 	return config{
 		PostgresPgxConfig:  postgresPgxConfig,
 		Dsn:                dsn,
-		KafkaConfig: kafkaConfig,
+		KafkaConsumerConfig: KafkaConsumerConfig,
+		KafkaProducerConfig: KafkaProducerConfig,
 		RedisConfig: &RedisConfig{
 			Opts: redisOpts,
 		},
