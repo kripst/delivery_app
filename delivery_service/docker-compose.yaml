@@ -1,0 +1,35 @@
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres_delivery_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dbname
+      TZ: Europe/Moscow  
+    ports:
+      - "5430:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d dbname"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:latest
+    container_name: redis_delivery_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    
+volumes:
+  postgres_data:
+  redis_data:

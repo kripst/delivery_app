@@ -1,0 +1,4 @@
+{"level":"info","ts":1753007949.0326133,"caller":"orders/new-order.go:18","msg":"new_order","order_id":"order124"}
+{"level":"info","ts":1753008129.3335521,"caller":"orders/new-order.go:18","msg":"new_order","order_id":"order124"}
+2025-07-20T13:44:13.774+0300	INFO	orders/new-order.go:18	new_order	{"order_id": "order124"}
+2025-07-20T13:44:13.777+0300	DEBUG	orders/new-order.go:24	Текущее состояние Orders	{"orders_map": {"order124":{"id":"order124","user_id":"user457","darkstore_id":"store789","total_price_kopecks":15000,"items":[{"id":"prod1","price_kopecks":5000},{"id":"prod2","price_kopecks":5000}],"created_at":{"seconds":1753008253,"nanos":733529400}}}}
