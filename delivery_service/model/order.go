@@ -6,7 +6,7 @@ type Delivery struct {
     OrderID          string         `json:"OrderID"`          // ID заказа
     UserID           string         `json:"UserID"`           // ID пользователя
     DarkstoreID      string         `json:"DarkstoreID"`      // ID темного магазина (склада)
-    DeliveryWindow   string         `json:"delivery_window"`   // Временное окно доставки
+    DeliveryWindow   string         `json:"DeliveryWindow"`   // Временное окно доставки
     Address          string         `json:"Address"`          // Адрес доставки
 	CallBefore       bool           `json:"call_before"`
 	UnderDoor        bool           `json:"under_door"`

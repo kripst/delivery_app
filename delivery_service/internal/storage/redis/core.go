@@ -15,7 +15,7 @@ import (
 
 
 type TimeManager interface {
-	ScheduleOrder(ctx context.Context, orderID string, deliveryWindow string) error
+	ScheduleOrders(ctx context.Context, orderID []string, deliveryWindow []string) error
 	
 }
 
@@ -45,34 +45,49 @@ func NewTimeManagerImpl(config *config.RedisConfig) (*TimeManagerImpl, error) {
 }
 
 // scheduleOrder добавляет заказ в очередь на доставку.
-// deliveryTime - строка в формате "13:00-14:00"
-func (t *TimeManagerImpl) ScheduleOrder(ctx context.Context, orderID string, deliveryWindow string) error {
+// deliveryTime - строка в формате "YYYY:MM:DD:HH:MM"
+func (t *TimeManagerImpl) ScheduleOrders(ctx context.Context, orderIDs []string, deliveryWindows []string) error {
+	result := make([]redis.Z, len(orderIDs))
+	for i := 0; i < len(orderIDs); i++ {
+		parts := strings.Split(deliveryWindows[i], ":")
+		if len(parts) != 5 {
+			return fmt.Errorf("invalid time format, expected YYYY:MM:DD:HH:MM")
+		}
+		// НАДО ПОМЕНЯТЬ - пусть вставляет данные уже в формате "2006-01-02 15:04" потом добавлять + ":00"
+		// Создаем строку в формате, который понимает time.Parse
+		timeStr := fmt.Sprintf("%s-%s-%s %s:%s:00", parts[0], parts[1], parts[2], parts[3], parts[4])
+		
+		// Парсим с учетом временной зоны (можно указать time.UTC или Local)
+		deliveryTimestamp, err := time.Parse("2006-01-02 15:04:05", timeStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse time: %v", err)
+		}
+
+		result = append(result, redis.Z{
+			Score: float64(deliveryTimestamp.Unix()),
+			Member: orderIDs[i],
+		})
+	}
 	deliveryOrdersKey := model.DeliveryOrderKey
 
-	startTimeStr := strings.Split(deliveryWindow, "-")[0]
-	now := time.Now()
-	parsedTime, err := time.Parse("15:04", startTimeStr)
-	if err != nil {
-		return fmt.Errorf("invalid %s :%v", deliveryWindow, err)
-	}
-
-	deliveryTimestamp := time.Date(
-		now.Year(), now.Month(), now.Day(),
-		parsedTime.Hour(), parsedTime.Minute(), 0, 0, now.Location(),
-	)
-
-	err = t.Client.ZAdd(ctx, deliveryOrdersKey, redis.Z{
-		Score: float64(deliveryTimestamp.Unix()),
-		Member: orderID,
-	}).Err()
+	err := t.Client.ZAdd(ctx, deliveryOrdersKey, result...).Err()
 
 	if err != nil {
-		return fmt.Errorf("не удалось добавить заказ в Redis: %v", err)
+		return fmt.Errorf("не удалось добавить заказы в Redis: %v", err)
 	}
 
-	t.Logger.Info("new redis order",
-		zap.String("order ID", orderID),
-		zap.Any("order time", deliveryTimestamp))
+	for i := 0; i < len(orderIDs); i++ {
+		deliveryTimestamp := result[i].Score
+		// Преобразование обратно в time.Time
+		ti := time.Unix(int64(deliveryTimestamp), 0) // наносекунды = 0
+
+		// Форматирование в "2006-01-02 15:04:05"
+		formattedTime := ti.Format("2006-01-02 15:04:05")
+
+		t.Logger.Info("new redis order",
+		zap.String("order ID", orderIDs[i]),
+		zap.Any("order time ", formattedTime))
+	}
 	
 	return nil
 }

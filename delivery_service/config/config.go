@@ -12,23 +12,27 @@ import (
 type KafkaConsumerConfig struct {
 	SaramaConfig *sarama.Config
 	Brokers      []string
+	GroupID      []string
+	MaxWorkerPool int
+	Topic        string
 }
 
 type KafkaProducerConfig struct {
 	SaramaConfig *sarama.Config
 	Brokers      []string
 }
+
 type RedisConfig struct {
 	Opts *redis.Options
 }
 
 type config struct {
-	PostgresUrl       string
-	PostgresPgxConfig *pgxpool.Config
-	Dsn               string
-	KafkaConsumerConfig       *KafkaConsumerConfig
-	KafkaProducerConfig       *KafkaProducerConfig
-	RedisConfig       *RedisConfig
+	PostgresUrl         string
+	PostgresPgxConfig   *pgxpool.Config
+	Dsn                 string
+	KafkaConsumerConfig *KafkaConsumerConfig
+	KafkaProducerConfig *KafkaProducerConfig
+	RedisConfig         *RedisConfig
 }
 
 func Load() (config, error) {
@@ -40,7 +44,9 @@ func Load() (config, error) {
 	postgresPort := "5430"
 	postgresSslMode := "disable"
 	postgresTimeZone := "Europe/Moscow"
-	kafkaBrokers  := []string{"localhost:9092"}
+	kafkaBrokers := []string{"localhost:9092"}
+	groupIDs     := []string{"my-consumer-group"}
+	topic := "create_orders"
 	saramaConsumerConfig := sarama.NewConfig()
 	saramaConsumerConfig.Producer.Return.Errors = true
 
@@ -52,6 +58,10 @@ func Load() (config, error) {
 	KafkaConsumerConfig := &KafkaConsumerConfig{
 		SaramaConfig: saramaConsumerConfig,
 		Brokers:      kafkaBrokers,
+		GroupID:      groupIDs,
+		Topic: topic,
+		MaxWorkerPool: 100,
+
 	}
 
 	KafkaProducerConfig := &KafkaProducerConfig{
@@ -70,18 +80,18 @@ func Load() (config, error) {
 
 	postgresPgxConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		
+
 	}
 
 	// Опциональные настройки пула
 	postgresPgxConfig.MaxConns = 100
-	postgresPgxConfig.MinConns = 5                 // Максимальное число соединений                
-	postgresPgxConfig.MaxConnLifetime = 30 * time.Second    // Максимальное время жизни соединения
+	postgresPgxConfig.MinConns = 5                         // Максимальное число соединений
+	postgresPgxConfig.MaxConnLifetime = 30 * time.Second   // Максимальное время жизни соединения
 	postgresPgxConfig.HealthCheckPeriod = 10 * time.Second // Как часто проверять соединения
 
 	return config{
-		PostgresPgxConfig:  postgresPgxConfig,
-		Dsn:                dsn,
+		PostgresPgxConfig:   postgresPgxConfig,
+		Dsn:                 dsn,
 		KafkaConsumerConfig: KafkaConsumerConfig,
 		KafkaProducerConfig: KafkaProducerConfig,
 		RedisConfig: &RedisConfig{

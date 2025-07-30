@@ -12,7 +12,7 @@ import (
 )
 
 type DeliveryRepository interface {
-	CreateDelivery(ctx context.Context, delivery *model.Delivery) error
+	BatchInsert(ctx context.Context, delivery []*model.Delivery) error
 	// CancelDelivery(orderID string) error
 }
 
@@ -53,7 +53,8 @@ func NewPostgresRepository(ctx context.Context, config *pgxpool.Config) (*Postgr
 	return &PostgresRepository{Db: pool, Log: logger}, nil
 }
 
-func (r *PostgresRepository) CreateDelivery(ctx context.Context, delivery *model.Delivery) error {
+func (r *PostgresRepository) BatchInsert(ctx context.Context, deliveries []*model.Delivery) error {
+	orderIDs := make([]string, 0, len(deliveries))
 
 	tx, err := r.Db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -70,6 +71,41 @@ func (r *PostgresRepository) CreateDelivery(ctx context.Context, delivery *model
 		}
 	}()
 
+	batch := &pgx.Batch{}
+	
+	for i := 0; i < len(deliveries); i++ {
+		insertBatch(batch, deliveries[i])
+		orderIDs = append(orderIDs, deliveries[i].OrderID)
+	}
+	
+	br := tx.SendBatch(ctx, batch)
+
+	for i := 0; i < len(deliveries); i++ {
+		if _, err := br.Exec(); err != nil {
+			r.Log.Error("could not create order", 
+				zap.String("order_id", deliveries[i].OrderID),
+				zap.Any("order data", deliveries[i]),
+				zap.Error(err))
+		}
+	}
+
+	if err := br.Close(); err != nil {
+		r.Log.Error("could not close batch", 
+				zap.Error(err))
+	}
+
+	// Фиксируем транзакцию
+	if err = tx.Commit(ctx); err != nil {
+		r.Log.Error("Failed to commit transaction", zap.Error(err))
+		return fmt.Errorf("transaction commit failed: %w", err)
+	}
+
+	r.Log.Info("Successfully created new orders", zap.Any("orderIDs", orderIDs))
+
+	return nil
+}
+
+func insertBatch(batch *pgx.Batch, delivery *model.Delivery) {
 	query := fmt.Sprintf(
 		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s,%s, %s) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
 		DeliveriesTable,
@@ -85,9 +121,8 @@ func (r *PostgresRepository) CreateDelivery(ctx context.Context, delivery *model
 		FieldUserSurname,
 		FieldUserPhone,
 	)
-
-	_, err = r.Db.Exec(
-		ctx,
+		
+	batch.Queue(
 		query,
 		delivery.OrderID,
 		delivery.UserID,
@@ -101,12 +136,6 @@ func (r *PostgresRepository) CreateDelivery(ctx context.Context, delivery *model
 		delivery.UserSurname,
 		delivery.UserPhone,
 	)
-
-	if err != nil {
-		return fmt.Errorf("order insert failed: %w", err)
-	}
-
-	batch := &pgx.Batch{}
 
 	for _, item := range delivery.DeliveryItems {
 		itemQuery := fmt.Sprintf(
@@ -127,49 +156,11 @@ func (r *PostgresRepository) CreateDelivery(ctx context.Context, delivery *model
 		)
 	}
 
-	// Отправляем все запросы разом
-	br := tx.SendBatch(ctx, batch)
-
-	// Проверяем ошибки для каждой операции в batch
-	for i := 0; i < batch.Len(); i++ {
-		_, err = br.Exec()
-		if err != nil {
-			r.Log.Error("Failed to create order item in batch",
-				zap.Error(err),
-				zap.String("order_id", delivery.OrderID),
-				zap.Int("item_index", i),
-			)
-			return fmt.Errorf("batch insert failed at item %d: %w", i, err)
-		}
-	}
-	if err := br.Close(); err != nil {
-		r.Log.Error("Failed to close batch",
-			zap.Error(err),
-			zap.String("order_id", delivery.OrderID),
-		)
-		return err
-	}
-
 	// outbox
 	outBoxQueue := fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES ($1, $2)",
 		DeliveryOutboxTable,
 		FieldDeliveryID,
 		FieldDeliveryWindow)
 
-	_, err = tx.Exec(ctx, outBoxQueue,
-		delivery.OrderID,
-		delivery.DeliveryWindow)
-	if err != nil {
-		return fmt.Errorf("outbox insert failed: %w", err)
-	}
-
-	// Фиксируем транзакцию
-	if err = tx.Commit(ctx); err != nil {
-		r.Log.Error("Failed to commit transaction", zap.Error(err))
-		return fmt.Errorf("transaction commit failed: %w", err)
-	}
-
-	r.Log.Info("Successfully created new order", zap.String("order_id", delivery.OrderID))
-
-	return nil
+	batch.Queue(outBoxQueue, delivery.OrderID, delivery.DeliveryWindow)
 }

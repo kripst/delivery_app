@@ -42,7 +42,7 @@ func (r *Relayer) Start(ctx context.Context) {
 		}
 	}
 }
-
+// НАДО ПОМЕНЯТЬ функция обрабатывает только те заказы у которых одинаковое время 
 func (r *Relayer) updateOrdersStatus(ctx context.Context) {
 	orderIDs, err := r.deliveryService.GetReadyOrders(ctx)
 	if err != nil {
@@ -63,6 +63,5 @@ func (r *Relayer) updateOrdersStatus(ctx context.Context) {
 		return
 	}
 
-	
 
 }

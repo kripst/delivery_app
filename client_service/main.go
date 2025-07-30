@@ -28,8 +28,8 @@ func main() {
 
 	log.Println("Creating a new order...")
 	createReq := &pb.CreateOrderRequest{
-		RequestId:      "987654321-0009",
-		UserId:        "987654321",
+		RequestId:      "987666321-0002",
+		UserId:        "987666321",
 		DarkstoreId:   "store789",
 		
 		// Информация о клиенте

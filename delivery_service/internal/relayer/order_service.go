@@ -50,6 +50,9 @@ func (t *deliveryServiceImpl) GetReadyOrders(ctx context.Context) ([]string, err
 	opt := &redis.ZRangeBy{
 		Min: "0",
 		Max: strconv.FormatInt(nowUnix, 10),
+			// Добавляем эти параметры, чтобы получить ВСЕ записи
+		Offset: 0,
+		Count:  -1,
 	}
 
 	readyOrders, err := t.Client.ZRangeByScore(ctx, deliveryOrdersKey, opt).Result()
